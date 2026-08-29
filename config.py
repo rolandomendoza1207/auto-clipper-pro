@@ -17,23 +17,23 @@ for d in (ASSETS_DIR, CLIPS_DIR, TEMP_DIR, DOWNLOADS_DIR, PROCESSING_DIR, OUTPUT
 # ============ BASE DE DATOS ============
 DATABASE_PATH = "database.db"
 
-# ============ VARIABLES DE ENTORNO ============
-BOT_TOKEN = os.getenv("BOT_TOKEN", "")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
-HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN", "")
-SUPER_ADMIN_ID = os.getenv("SUPER_ADMIN_ID", "")
+# ============ TOKENS ============
+BOT_TOKEN = "8840124475:AAFHwmCegX61_5qB7Oe_kOAGxkpsxu8GsXY"
+GROQ_API_KEY = "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"
+YOUTUBE_API_KEY = "AIzaSyBMeaPQ6UhP2VbIOzgvh99tpl007bLeFKE"
+HUGGINGFACE_TOKEN = "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"
+SUPER_ADMIN_ID = "123456789"
 SUPER_ADMIN_IDS = [SUPER_ADMIN_ID] if SUPER_ADMIN_ID else []
 
-# ============ COLA DE PROCESAMIENTO ============
+# ============ COLA ============
 MAX_WORKERS_COLA = 2
-MAX_DURACION_VIDEO = 10800  # 3 horas en segundos
-MAX_VIDEO_DURATION = 10800  # Alias en inglés
-MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
+MAX_DURACION_VIDEO = 10800
+MAX_VIDEO_DURATION = 10800
+MAX_FILE_SIZE = 500 * 1024 * 1024
 
 # ============ CLIPS ============
-CLIP_MIN_SEG = 30  # Duración mínima de clip en segundos
-CLIP_MAX_SEG = 60  # Duración máxima de clip en segundos
+CLIP_MIN_SEG = 30
+CLIP_MAX_SEG = 60
 
 # ============ FUENTES ============
 FUENTES_DISPONIBLES = [
