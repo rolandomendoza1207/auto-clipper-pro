@@ -1,9 +1,8 @@
 import os
 from pathlib import Path
 from dataclasses import dataclass
-DATABASE_PATH = "database.db"
 
-# Directorios
+# ============ DIRECTORIOS ============
 BASE_DIR = Path(__file__).parent
 ASSETS_DIR = BASE_DIR / "assets"
 CLIPS_DIR = BASE_DIR / "clips"
@@ -12,23 +11,27 @@ TEMP_DIR = BASE_DIR / "temp"
 for d in (ASSETS_DIR, CLIPS_DIR, TEMP_DIR):
     d.mkdir(exist_ok=True)
 
-# Variables de entorno
+# ============ BASE DE DATOS ============
+DATABASE_PATH = "database.db"
+
+# ============ VARIABLES DE ENTORNO ============
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN", "")
 SUPER_ADMIN_ID = os.getenv("SUPER_ADMIN_ID", "")
+SUPER_ADMIN_IDS = [SUPER_ADMIN_ID] if SUPER_ADMIN_ID else []
 
-# Configuración de cola
+# ============ COLA DE PROCESAMIENTO ============
 MAX_WORKERS_COLA = 2
 
-# Fuentes disponibles
+# ============ FUENTES ============
 FUENTES_DISPONIBLES = [
     "default", "bold", "italic", "handwriting", "minimal",
     "classic", "modern", "elegant", "impact", "rounded"
 ]
 
-# Planes
+# ============ PLANES ============
 @dataclass
 class Plan:
     nombre: str
@@ -81,6 +84,7 @@ PLANES = {
     ),
 }
 
+# ============ VALIDACIÓN ============
 def validar_config_minima():
     faltantes = []
     if not BOT_TOKEN:
