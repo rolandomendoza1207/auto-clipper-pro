@@ -1,167 +1,89 @@
-"""
-config.py
-=========
-Configuración central de Auto Clipper Pro.
-Carga variables de entorno y define constantes de negocio (planes, límites, rutas).
-"""
-
 import os
-import logging
 from pathlib import Path
-from dataclasses import dataclass, field
-from typing import Dict
+from dataclasses import dataclass
 
-# ---------------------------------------------------------------------------
-# Variables de entorno obligatorias / opcionales
-# ---------------------------------------------------------------------------
+# Directorios
+BASE_DIR = Path(__file__).parent
+ASSETS_DIR = BASE_DIR / "assets"
+CLIPS_DIR = BASE_DIR / "clips"
+TEMP_DIR = BASE_DIR / "temp"
+
+for d in (ASSETS_DIR, CLIPS_DIR, TEMP_DIR):
+    d.mkdir(exist_ok=True)
+
+# Variables de entorno
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY", "")
 HUGGINGFACE_TOKEN = os.getenv("HUGGINGFACE_TOKEN", "")
+SUPER_ADMIN_ID = os.getenv("SUPER_ADMIN_ID", "")
 
-# IDs de Telegram del/los super administradores, separados por coma.
-# Ejemplo: SUPER_ADMIN_ID="123456789,987654321"
-SUPER_ADMIN_IDS = {
-    int(x) for x in os.getenv("SUPER_ADMIN_ID", "").split(",") if x.strip().isdigit()
-}
+# Configuración de cola
+MAX_WORKERS_COLA = 2
 
-DATABASE_PATH = os.getenv("DATABASE_PATH", "data/autoclipperpro.db")
+# Fuentes disponibles
+FUENTES_DISPONIBLES = [
+    "default", "bold", "italic", "handwriting", "minimal",
+    "classic", "modern", "elegant", "impact", "rounded"
+]
 
-# Credenciales opcionales para auto-publicación (se activan cuando el usuario
-# conecta su propia cuenta desde /autopublicar). Estas NO son necesarias para
-# que el bot funcione en modo clipping / análisis.
-META_APP_ID = os.getenv("META_APP_ID", "")
-META_APP_SECRET = os.getenv("META_APP_SECRET", "")
-TIKTOK_CLIENT_KEY = os.getenv("TIKTOK_CLIENT_KEY", "")
-TIKTOK_CLIENT_SECRET = os.getenv("TIKTOK_CLIENT_SECRET", "")
-
-# ---------------------------------------------------------------------------
-# Rutas de trabajo
-# ---------------------------------------------------------------------------
-BASE_DIR = Path(__file__).resolve().parent
-STORAGE_DIR = BASE_DIR / "storage"
-DOWNLOADS_DIR = STORAGE_DIR / "downloads"
-CLIPS_DIR = STORAGE_DIR / "clips"
-ASSETS_DIR = STORAGE_DIR / "assets"          # logos, intros, outros por usuario
-BACKUPS_DIR = STORAGE_DIR / "backups"
-
-for d in (DOWNLOADS_DIR, CLIPS_DIR, ASSETS_DIR, BACKUPS_DIR):
-    d.mkdir(parents=True, exist_ok=True)
-
-# ---------------------------------------------------------------------------
-# Logging
-# ---------------------------------------------------------------------------
-from loguru import logger  # noqa: E402
-
-logger.add(
-    BASE_DIR / "logs" / "bot_{time:YYYY-MM-DD}.log",
-    rotation="1 day",
-    retention="14 days",
-    level="INFO",
-    encoding="utf-8",
-)
-
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-)
-# Bajamos ruido de librerías externas
-logging.getLogger("httpx").setLevel(logging.WARNING)
-
-# ---------------------------------------------------------------------------
-# Definición de Planes
-# ---------------------------------------------------------------------------
+# Planes
 @dataclass
-class PlanConfig:
+class Plan:
     nombre: str
-    videos_por_dia: int              # -1 = ilimitado
+    videos_por_dia: int
     subtitulos_animados: bool
     deteccion_highlights: bool
     hashtags_automaticos: bool
-    analisis_cuentas: int            # nº de cuentas por plataforma permitidas
-    marca_agua_personalizable: bool
-    marca_agua_imagen: bool
+    analisis_cuentas: int
     fuentes_disponibles: int
-    modo_autopilot: bool
+    marca_agua_imagen: bool
     intro_outro: bool
-    colores_marca: bool
-    quitar_marca_agua: bool
+    modo_autopilot: bool
 
-
-PLANES: Dict[str, PlanConfig] = {
-    "gratis": PlanConfig(
+PLANES = {
+    "gratis": Plan(
         nombre="Gratis",
         videos_por_dia=1,
         subtitulos_animados=False,
         deteccion_highlights=False,
         hashtags_automaticos=False,
-        analisis_cuentas=0,
-        marca_agua_personalizable=False,
-        marca_agua_imagen=False,
+        analisis_cuentas=1,
         fuentes_disponibles=3,
-        modo_autopilot=False,
+        marca_agua_imagen=False,
         intro_outro=False,
-        colores_marca=False,
-        quitar_marca_agua=False,
+        modo_autopilot=False,
     ),
-    "pro": PlanConfig(
+    "pro": Plan(
         nombre="Pro",
         videos_por_dia=10,
         subtitulos_animados=True,
         deteccion_highlights=True,
         hashtags_automaticos=True,
-        analisis_cuentas=1,
-        marca_agua_personalizable=True,
-        marca_agua_imagen=False,
+        analisis_cuentas=2,
         fuentes_disponibles=10,
-        modo_autopilot=False,
+        marca_agua_imagen=False,
         intro_outro=False,
-        colores_marca=False,
-        quitar_marca_agua=False,
+        modo_autopilot=False,
     ),
-    "premium": PlanConfig(
+    "premium": Plan(
         nombre="Premium",
         videos_por_dia=-1,
         subtitulos_animados=True,
         deteccion_highlights=True,
         hashtags_automaticos=True,
         analisis_cuentas=3,
-        marca_agua_personalizable=True,
-        marca_agua_imagen=True,
         fuentes_disponibles=20,
-        modo_autopilot=True,
+        marca_agua_imagen=True,
         intro_outro=True,
-        colores_marca=True,
-        quitar_marca_agua=True,
+        modo_autopilot=True,
     ),
 }
 
-# Duración máxima de video que se acepta descargar (segundos)
-MAX_DURACION_VIDEO = 3 * 60 * 60  # 3 horas
-
-# Duración de los clips generados
-CLIP_MIN_SEG = 30
-CLIP_MAX_SEG = 60
-
-# Máximo de trabajos simultáneos en la cola de procesamiento
-MAX_WORKERS_COLA = 2
-
-# Rate limiting básico (mensajes por minuto por usuario)
-RATE_LIMIT_MSG_POR_MIN = 20
-
-FUENTES_DISPONIBLES = [
-    "Montserrat-Bold", "Poppins-Bold", "Anton", "BebasNeue", "Oswald-Bold",
-    "Lato-Black", "Roboto-Bold", "OpenSans-Bold", "Nunito-Black", "Raleway-Bold",
-    "Inter-Bold", "WorkSans-Bold", "Archivo-Black", "DMSans-Bold", "Rubik-Bold",
-    "Comfortaa-Bold", "PermanentMarker", "Caveat-Bold", "Pacifico", "IndieFlower",
-]
-
-
-def validar_config_minima() -> list:
-    """Devuelve una lista de variables de entorno obligatorias que faltan."""
+def validar_config_minima():
     faltantes = []
     if not BOT_TOKEN:
         faltantes.append("BOT_TOKEN")
-    if not SUPER_ADMIN_IDS:
-        faltantes.append("SUPER_ADMIN_ID")
+    if not GROQ_API_KEY:
+        faltantes.append("GROQ_API_KEY")
     return faltantes
