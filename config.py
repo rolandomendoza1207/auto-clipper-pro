@@ -31,6 +31,11 @@ FUENTES_DISPONIBLES = [
     "classic", "modern", "elegant", "impact", "rounded"
 ]
 
+# ============ REFERIDOS ============
+REFERIDOS_REQUERIDOS = 3
+DIAS_RECOMPENSA = 7
+PUNTOS_PARA_UN_DIA_PREMIUM = 100
+
 # ============ PLANES ============
 @dataclass
 class Plan:
