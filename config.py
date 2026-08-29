@@ -7,8 +7,11 @@ BASE_DIR = Path(__file__).parent
 ASSETS_DIR = BASE_DIR / "assets"
 CLIPS_DIR = BASE_DIR / "clips"
 TEMP_DIR = BASE_DIR / "temp"
+DOWNLOADS_DIR = BASE_DIR / "downloads"
+PROCESSING_DIR = BASE_DIR / "processing"
+OUTPUT_DIR = BASE_DIR / "output"
 
-for d in (ASSETS_DIR, CLIPS_DIR, TEMP_DIR):
+for d in (ASSETS_DIR, CLIPS_DIR, TEMP_DIR, DOWNLOADS_DIR, PROCESSING_DIR, OUTPUT_DIR):
     d.mkdir(exist_ok=True)
 
 # ============ BASE DE DATOS ============
@@ -24,6 +27,8 @@ SUPER_ADMIN_IDS = [SUPER_ADMIN_ID] if SUPER_ADMIN_ID else []
 
 # ============ COLA DE PROCESAMIENTO ============
 MAX_WORKERS_COLA = 2
+MAX_VIDEO_DURATION = 10800  # 3 horas en segundos
+MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
 
 # ============ FUENTES ============
 FUENTES_DISPONIBLES = [
