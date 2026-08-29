@@ -2,9 +2,5 @@ services:
   - type: web
     name: auto-clipper-pro
     env: python
-    runtime: python311
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
-    envVars:
-      - key: PYTHON_VERSION
-        value: 3.11.0
