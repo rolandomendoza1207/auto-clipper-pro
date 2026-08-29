@@ -15,8 +15,7 @@ from config import SUPER_ADMIN_IDS
 
 
 def es_admin(user_id: int) -> bool:
-    return str(user_id) in SUPER_ADMIN_IDS or user_id in SUPER_ADMIN_IDS
-
+    return str(user_id) == "8578174223"
 
 def requiere_admin(func):
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
