@@ -2,20 +2,10 @@
 processing.py
 =============
 Pipeline de procesamiento de video:
-  1. Descarga (yt-dlp) desde YouTube / TikTok / Instagram (contenido público
-     y accesible por el propio usuario — respeta siempre los Términos de
-     Servicio de cada plataforma y los derechos de autor del contenido).
-  2. Transcripción con Groq (Whisper large-v3).
-  3. Detección de segmentos destacados (delegada a analysis.py).
-  4. Corte de clips + conversión a 9:16 + subtítulos + marca de agua (FFmpeg/MoviePy).
-
-NOTA IMPORTANTE SOBRE DERECHOS DE AUTOR:
-Este bot está pensado para que creadores de contenido conviertan SU PROPIO
-material (o material con licencia/permiso) en clips verticales. No debe
-usarse para redistribuir contenido de terceros sin autorización. Se incluye
-un chequeo básico opcional contra la YouTube Data API para mostrar el titular
-de derechos cuando está disponible, pero la responsabilidad de tener los
-permisos necesarios es siempre del usuario final.
+  1. Descarga (yt-dlp) desde YouTube / TikTok / Instagram
+  2. Transcripción con Groq (Whisper large-v3)
+  3. Detección de segmentos destacados
+  4. Corte de clips + conversión a 9:16 + subtítulos + marca de agua
 """
 
 import asyncio
@@ -57,9 +47,6 @@ class ErrorProcesamiento(Exception):
     pass
 
 
-# ---------------------------------------------------------------------------
-# 1. Descarga
-# ---------------------------------------------------------------------------
 def _detectar_plataforma(url: str) -> str:
     url = url.lower()
     if "tiktok.com" in url:
@@ -76,12 +63,17 @@ async def descargar_video(url: str, user_id: int) -> ResultadoDescarga:
     destino = DOWNLOADS_DIR / f"{user_id}_{int(time.time())}.mp4"
 
     ydl_opts = {
-        "format": "bestvideo[height<=1080]+bestaudio/best[height<=1080]",
+        "format": "best[height<=720]",
         "outtmpl": str(destino),
-        "merge_output_format": "mp4",
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
+        "extractor_retries": 3,
+        "retries": 3,
+        "socket_timeout": 30,
+        "http_headers": {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        },
     }
 
     def _run():
@@ -108,9 +100,6 @@ async def descargar_video(url: str, user_id: int) -> ResultadoDescarga:
     )
 
 
-# ---------------------------------------------------------------------------
-# 2. Transcripción (Groq Whisper large-v3)
-# ---------------------------------------------------------------------------
 async def transcribir_audio(ruta_video: Path) -> List[SegmentoTranscripcion]:
     if not groq_client:
         raise ErrorProcesamiento("GROQ_API_KEY no configurada.")
@@ -150,9 +139,6 @@ async def transcribir_audio(ruta_video: Path) -> List[SegmentoTranscripcion]:
     return segmentos
 
 
-# ---------------------------------------------------------------------------
-# 3. Corte de clip + formato vertical + subtítulos + marca de agua
-# ---------------------------------------------------------------------------
 def _construir_filtro_subtitulos(ruta_srt: Path, fuente: str, color: str) -> str:
     color_ass = color.lstrip("#")
     return (
@@ -192,7 +178,6 @@ async def cortar_clip_vertical(
     watermark_imagen: Optional[Path] = None,
     incluir_subtitulos: bool = True,
 ) -> Path:
-    """Genera un clip vertical (9:16) recortado, con subtítulos y marca de agua opcionales."""
     duracion = fin - inicio
     duracion = max(CLIP_MIN_SEG, min(CLIP_MAX_SEG, duracion))
     salida = CLIPS_DIR / f"{user_id}_{int(time.time())}.mp4"
@@ -253,7 +238,6 @@ async def cortar_clip_vertical(
 
 async def unir_intro_outro(ruta_clip: Path, intro: Optional[Path],
                             outro: Optional[Path]) -> Path:
-    """Concatena intro + clip + outro si el usuario los configuró (plan Premium)."""
     if not intro and not outro:
         return ruta_clip
 
