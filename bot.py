@@ -460,10 +460,15 @@ def construir_app() -> Application:
     return app
 
 
+import asyncio
+
 def main():
     app = construir_app()
     logger.info("🚀 Auto Clipper Pro iniciado.")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    try:
+        asyncio.run(app.run_polling(allowed_updates=Update.ALL_TYPES))
+    except (KeyboardInterrupt, SystemExit):
+        pass
 
 
 if __name__ == "__main__":
