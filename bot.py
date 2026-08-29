@@ -465,10 +465,7 @@ import asyncio
 def main():
     app = construir_app()
     logger.info("🚀 Auto Clipper Pro iniciado.")
-    try:
-        asyncio.run(app.run_polling(allowed_updates=Update.ALL_TYPES))
-    except (KeyboardInterrupt, SystemExit):
-        pass
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
