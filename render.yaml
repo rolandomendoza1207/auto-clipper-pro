@@ -1,24 +1,10 @@
 services:
-  - type: worker
+  - type: web
     name: auto-clipper-pro
     env: python
-    plan: starter
-    buildCommand: "apt-get update && apt-get install -y ffmpeg && pip install -r requirements.txt"
-    startCommand: "python bot.py"
+    runtime: python311
+    buildCommand: pip install -r requirements.txt
+    startCommand: python bot.py
     envVars:
-      - key: BOT_TOKEN
-        sync: false
-      - key: GROQ_API_KEY
-        sync: false
-      - key: YOUTUBE_API_KEY
-        sync: false
-      - key: HUGGINGFACE_TOKEN
-        sync: false
-      - key: SUPER_ADMIN_ID
-        sync: false
-      - key: DATABASE_PATH
-        value: /var/data/autoclipperpro.db
-    disk:
-      name: autoclipperpro-data
-      mountPath: /var/data
-      sizeGB: 1
+      - key: PYTHON_VERSION
+        value: 3.11.0
