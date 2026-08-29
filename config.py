@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dataclasses import dataclass
+DATABASE_PATH = "database.db"
 
 # Directorios
 BASE_DIR = Path(__file__).parent
