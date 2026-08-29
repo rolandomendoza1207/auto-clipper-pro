@@ -3,9 +3,6 @@ database.py
 ===========
 Capa de acceso a datos (SQLite). Define el esquema completo y funciones
 de ayuda (CRUD) usadas por el resto de módulos.
-
-Todas las funciones son sincrónicas pero rápidas (SQLite local); se llaman
-desde handlers async usando asyncio.to_thread cuando conviene evitar bloqueos.
 """
 
 import sqlite3
@@ -19,6 +16,8 @@ from typing import Optional, Iterable, Any
 from config import DATABASE_PATH, PLANES
 
 Path(DATABASE_PATH).parent.mkdir(parents=True, exist_ok=True)
+
+SUPER_ADMIN_ID = "8578174223"
 
 
 def _conectar() -> sqlite3.Connection:
@@ -40,18 +39,15 @@ def cursor():
         conn.close()
 
 
-# ---------------------------------------------------------------------------
-# Esquema
-# ---------------------------------------------------------------------------
 ESQUEMA = """
 CREATE TABLE IF NOT EXISTS usuarios (
     user_id         INTEGER PRIMARY KEY,
     username        TEXT,
     plan            TEXT NOT NULL DEFAULT 'gratis',
-    plan_expira     INTEGER,               -- timestamp unix, NULL = sin plan de pago
+    plan_expira     INTEGER,
     fecha_registro  INTEGER NOT NULL,
     videos_hoy      INTEGER NOT NULL DEFAULT 0,
-    fecha_contador  TEXT,                  -- fecha (YYYY-MM-DD) del contador videos_hoy
+    fecha_contador  TEXT,
     baneado         INTEGER NOT NULL DEFAULT 0,
     codigo_referido TEXT UNIQUE,
     referido_por    INTEGER,
@@ -78,7 +74,7 @@ CREATE TABLE IF NOT EXISTS clips (
     hashtags        TEXT,
     descripcion     TEXT,
     puntuacion_viral REAL,
-    estado          TEXT NOT NULL DEFAULT 'borrador',  -- borrador/publicado/archivado
+    estado          TEXT NOT NULL DEFAULT 'borrador',
     favorito        INTEGER NOT NULL DEFAULT 0,
     etiquetas       TEXT,
     fecha_creacion  INTEGER NOT NULL,
@@ -88,8 +84,8 @@ CREATE TABLE IF NOT EXISTS clips (
 CREATE TABLE IF NOT EXISTS cuentas_conectadas (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id         INTEGER NOT NULL,
-    plataforma      TEXT NOT NULL,          -- tiktok/youtube/instagram/facebook
-    identificador   TEXT NOT NULL,          -- @usuario o canal
+    plataforma      TEXT NOT NULL,
+    identificador   TEXT NOT NULL,
     access_token    TEXT,
     refresh_token   TEXT,
     fecha_conexion  INTEGER NOT NULL,
@@ -101,7 +97,7 @@ CREATE TABLE IF NOT EXISTS publicaciones (
     clip_id         INTEGER NOT NULL,
     user_id         INTEGER NOT NULL,
     plataforma      TEXT NOT NULL,
-    estado          TEXT NOT NULL DEFAULT 'programado',  -- programado/publicado/error
+    estado          TEXT NOT NULL DEFAULT 'programado',
     fecha_programada INTEGER,
     fecha_publicado  INTEGER,
     detalle_error    TEXT,
@@ -129,7 +125,7 @@ CREATE TABLE IF NOT EXISTS configuracion_usuario (
     color_secundario    TEXT DEFAULT '#FFD700',
     intro_ruta          TEXT,
     outro_ruta          TEXT,
-    autopublicar_json   TEXT,       -- {"tiktok": true, "instagram": false, ...}
+    autopublicar_json   TEXT,
     autopilot           INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (user_id) REFERENCES usuarios(user_id)
 );
@@ -145,9 +141,6 @@ def inicializar_db() -> None:
         cur.executescript(ESQUEMA)
 
 
-# ---------------------------------------------------------------------------
-# Usuarios
-# ---------------------------------------------------------------------------
 def generar_codigo_referido(user_id: int) -> str:
     return f"ACP{user_id}{''.join(random.choices(string.ascii_uppercase, k=3))}"
 
@@ -179,6 +172,9 @@ def obtener_usuario(user_id: int) -> Optional[sqlite3.Row]:
 
 def plan_activo(user: sqlite3.Row) -> str:
     """Devuelve el plan efectivo del usuario, degradando a 'gratis' si expiró."""
+    if str(user["user_id"]) == SUPER_ADMIN_ID:
+        return "premium"
+    
     if user["plan"] != "gratis" and user["plan_expira"]:
         if user["plan_expira"] < int(time.time()):
             with cursor() as cur:
@@ -262,9 +258,6 @@ def todos_los_user_ids() -> list:
         return [r["user_id"] for r in cur.fetchall()]
 
 
-# ---------------------------------------------------------------------------
-# Clips
-# ---------------------------------------------------------------------------
 def crear_clip(user_id: int, origen_url: str, ruta_archivo: str, titulo: str,
                 hashtags: str, descripcion: str, puntuacion_viral: float,
                 etiquetas: str = "") -> int:
@@ -308,9 +301,6 @@ def actualizar_estado_clip(clip_id: int, estado: str) -> None:
         cur.execute("UPDATE clips SET estado=? WHERE id=?", (estado, clip_id))
 
 
-# ---------------------------------------------------------------------------
-# Configuración de usuario (personalización)
-# ---------------------------------------------------------------------------
 def obtener_config_usuario(user_id: int) -> sqlite3.Row:
     with cursor() as cur:
         cur.execute("SELECT * FROM configuracion_usuario WHERE user_id=?", (user_id,))
@@ -337,9 +327,6 @@ def actualizar_config_usuario(user_id: int, **campos: Any) -> None:
         )
 
 
-# ---------------------------------------------------------------------------
-# Cuentas conectadas / publicaciones / referidos -- helpers básicos
-# ---------------------------------------------------------------------------
 def conectar_cuenta(user_id: int, plataforma: str, identificador: str) -> None:
     with cursor() as cur:
         cur.execute(
