@@ -27,8 +27,13 @@ SUPER_ADMIN_IDS = [SUPER_ADMIN_ID] if SUPER_ADMIN_ID else []
 
 # ============ COLA DE PROCESAMIENTO ============
 MAX_WORKERS_COLA = 2
-MAX_VIDEO_DURATION = 10800  # 3 horas en segundos
+MAX_DURACION_VIDEO = 10800  # 3 horas en segundos
+MAX_VIDEO_DURATION = 10800  # Alias en inglés
 MAX_FILE_SIZE = 500 * 1024 * 1024  # 500MB
+
+# ============ CLIPS ============
+CLIP_MIN_SEG = 30  # Duración mínima de clip en segundos
+CLIP_MAX_SEG = 60  # Duración máxima de clip en segundos
 
 # ============ FUENTES ============
 FUENTES_DISPONIBLES = [
