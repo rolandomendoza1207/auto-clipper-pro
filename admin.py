@@ -1,8 +1,7 @@
 """
 admin.py
 ========
-Comandos ocultos del panel de administración. Solo accesibles para los
-IDs listados en SUPER_ADMIN_ID.
+Comandos ocultos del panel de administración. Solo accesibles para el Super Admin.
 """
 
 from telegram import Update
@@ -13,9 +12,12 @@ import database as db
 import keys as keys_mod
 from config import SUPER_ADMIN_IDS
 
+SUPER_ADMIN_ID = "8578174223"
+
 
 def es_admin(user_id: int) -> bool:
-    return str(user_id) == "8578174223"
+    return str(user_id) == SUPER_ADMIN_ID
+
 
 def requiere_admin(func):
     async def wrapper(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -28,15 +30,23 @@ def requiere_admin(func):
 
 @requiere_admin
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    stats = db.contar_usuarios()
     texto = (
         "🛠 *Panel de Administración — Auto Clipper Pro*\n\n"
+        f"📊 *Estadísticas rápidas:*\n"
+        f"• Usuarios totales: *{stats['total']}*\n"
+        f"• Baneados: *{stats['baneados']}*\n\n"
+        "📋 *Acciones:*\n"
         "/admin_users — Lista de usuarios\n"
+        "/admin_info [user_id] — Ver info detallada\n"
+        "/admin_set_plan [user_id] [plan] [dias] — Cambiar plan\n"
+        "/admin_set_rol [user_id] [rol] — Cambiar rol\n"
         "/admin_generate_key [plan] [dias] — Generar key\n"
         "/admin_revoke_key [key] — Revocar key\n"
-        "/admin_stats — Estadísticas globales\n"
+        "/admin_stats — Estadísticas completas\n"
         "/admin_announce [mensaje] — Anuncio masivo\n"
-        "/admin_ban [user_id] — Banear usuario\n"
-        "/admin_unban [user_id] — Desbanear usuario\n"
+        "/admin_ban [user_id] — Banear\n"
+        "/admin_unban [user_id] — Desbanear\n"
     )
     await update.message.reply_markdown(texto)
 
@@ -50,10 +60,80 @@ async def admin_users(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lineas = ["👥 *Últimos 30 usuarios:*\n"]
     for u in usuarios:
         estado = "🚫" if u["baneado"] else "✅"
+        rol = u["rol"] if "rol" in u.keys() else "usuario"
         lineas.append(
-            f"{estado} `{u['user_id']}` @{u['username'] or 's/n'} — {u['plan']}"
+            f"{estado} `{u['user_id']}` @{u['username'] or 's/n'} — {rol} — {u['plan']}"
         )
     await update.message.reply_markdown("\n".join(lineas))
+
+
+@requiere_admin
+async def admin_info(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args or not context.args[0].isdigit():
+        await update.message.reply_text("Uso: /admin_info [user_id]")
+        return
+    
+    uid = int(context.args[0])
+    usuario = db.obtener_usuario(uid)
+    if not usuario:
+        await update.message.reply_text("❌ Usuario no encontrado.")
+        return
+    
+    config = db.obtener_config_usuario(uid)
+    clips = db.listar_clips(uid, limit=5)
+    cuentas = db.cuentas_de_usuario(uid)
+    
+    texto = (
+        f"👤 *Información del usuario*\n\n"
+        f"• ID: `{usuario['user_id']}`\n"
+        f"• Username: @{usuario['username'] or 's/n'}\n"
+        f"• Rol: {usuario['rol'] if 'rol' in usuario.keys() else 'usuario'}\n"
+        f"• Plan: {usuario['plan']}\n"
+        f"• Baneado: {'Sí' if usuario['baneado'] else 'No'}\n"
+        f"• Puntos: {usuario['puntos_lealtad']}\n"
+        f"• Registro: {usuario['fecha_registro']}\n\n"
+        f"🎬 Clips: {len(clips)}\n"
+        f"🔗 Cuentas conectadas: {len(cuentas)}\n"
+        f"🎨 Marca de agua: {config['watermark_texto'] or 'Ninguna'}"
+    )
+    await update.message.reply_markdown(texto)
+
+
+@requiere_admin
+async def admin_set_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+    if len(args) < 2 or args[0] not in ("gratis", "pro", "premium"):
+        await update.message.reply_text(
+            "Uso: /admin_set_plan [user_id] [gratis|pro|premium] [dias_opcional]\n"
+            "Ej: /admin_set_plan 123456789 premium 30"
+        )
+        return
+    
+    uid = int(args[0])
+    plan = args[1]
+    dias = int(args[2]) if len(args) > 2 and args[2].isdigit() else None
+    
+    db.cambiar_plan_admin(uid, plan, dias)
+    
+    msg = f"✅ Plan de {uid} cambiado a *{plan}*"
+    if dias:
+        msg += f" por {dias} días"
+    await update.message.reply_markdown(msg)
+
+
+@requiere_admin
+async def admin_set_rol(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    args = context.args
+    if len(args) != 2 or args[1] not in ("usuario", "admin", "super_admin"):
+        await update.message.reply_text(
+            "Uso: /admin_set_rol [user_id] [usuario|admin|super_admin]"
+        )
+        return
+    
+    uid = int(args[0])
+    rol = args[1]
+    db.cambiar_rol_admin(uid, rol)
+    await update.message.reply_text(f"✅ Rol de {uid} cambiado a *{rol}*")
 
 
 @requiere_admin
@@ -89,11 +169,13 @@ async def admin_revoke_key(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def admin_stats(update: Update, context: ContextTypes.DEFAULT_TYPE):
     stats = db.contar_usuarios()
     por_plan = "\n".join(f"   • {p}: {c}" for p, c in stats["por_plan"].items())
+    por_rol = "\n".join(f"   • {r}: {c}" for r, c in stats.get("por_rol", {}).items())
     texto = (
         "📊 *Estadísticas Globales*\n\n"
         f"Total de usuarios: *{stats['total']}*\n"
         f"Usuarios baneados: *{stats['baneados']}*\n\n"
-        f"Por plan:\n{por_plan}"
+        f"*Por plan:*\n{por_plan}\n\n"
+        f"*Por rol:*\n{por_rol}"
     )
     await update.message.reply_markdown(texto)
 
