@@ -25,6 +25,14 @@ HUGGINGFACE_TOKEN = "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"
 SUPER_ADMIN_ID = "8578174223"
 SUPER_ADMIN_IDS = [SUPER_ADMIN_ID] if SUPER_ADMIN_ID else []
 
+# ============ IA ============
+IA_MODELO = "llama-3.3-70b-versatile"
+IA_MAX_TOKENS = 2000
+IA_TEMPERATURA = 0.7
+
+# ============ IMÁGENES ============
+IMAGEN_URL = "https://image.pollinations.ai/prompt/{prompt}?width=1024&height=1024&nologo=true"
+
 # ============ COLA ============
 MAX_WORKERS_COLA = 2
 MAX_DURACION_VIDEO = 10800
