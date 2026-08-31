@@ -43,6 +43,7 @@ ESQUEMA = """
 CREATE TABLE IF NOT EXISTS usuarios (
     user_id         INTEGER PRIMARY KEY,
     username        TEXT,
+    rol             TEXT NOT NULL DEFAULT 'usuario',
     plan            TEXT NOT NULL DEFAULT 'gratis',
     plan_expira     INTEGER,
     fecha_registro  INTEGER NOT NULL,
@@ -139,6 +140,16 @@ CREATE INDEX IF NOT EXISTS idx_cuentas_user ON cuentas_conectadas(user_id);
 def inicializar_db() -> None:
     with cursor() as cur:
         cur.executescript(ESQUEMA)
+        # Actualizar super admin
+        cur.execute("""
+            UPDATE usuarios SET rol='super_admin', plan='premium' 
+            WHERE user_id=?
+        """, (int(SUPER_ADMIN_ID),))
+
+
+def es_super_admin(user_id: int) -> bool:
+    """Verifica si el usuario es super admin."""
+    return str(user_id) == SUPER_ADMIN_ID
 
 
 def generar_codigo_referido(user_id: int) -> str:
@@ -150,12 +161,25 @@ def obtener_o_crear_usuario(user_id: int, username: Optional[str]) -> sqlite3.Ro
         cur.execute("SELECT * FROM usuarios WHERE user_id = ?", (user_id,))
         row = cur.fetchone()
         if row:
+            # Si es super admin, asegurar rol y plan
+            if es_super_admin(user_id):
+                cur.execute("""
+                    UPDATE usuarios SET rol='super_admin', plan='premium', plan_expira=NULL 
+                    WHERE user_id=?
+                """, (user_id,))
+                cur.execute("SELECT * FROM usuarios WHERE user_id = ?", (user_id,))
+                return cur.fetchone()
             return row
+        
+        # Determinar rol al crear
+        rol = "super_admin" if es_super_admin(user_id) else "usuario"
+        plan_inicial = "premium" if es_super_admin(user_id) else "gratis"
+        
         codigo = generar_codigo_referido(user_id)
         cur.execute(
-            """INSERT INTO usuarios (user_id, username, plan, fecha_registro, codigo_referido)
-               VALUES (?, ?, 'gratis', ?, ?)""",
-            (user_id, username, int(time.time()), codigo),
+            """INSERT INTO usuarios (user_id, username, rol, plan, fecha_registro, codigo_referido)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (user_id, username, rol, plan_inicial, int(time.time()), codigo),
         )
         cur.execute(
             "INSERT INTO configuracion_usuario (user_id) VALUES (?)", (user_id,)
@@ -171,8 +195,9 @@ def obtener_usuario(user_id: int) -> Optional[sqlite3.Row]:
 
 
 def plan_activo(user: sqlite3.Row) -> str:
-    """Devuelve el plan efectivo del usuario, degradando a 'gratis' si expiró."""
-    if str(user["user_id"]) == SUPER_ADMIN_ID:
+    """Devuelve el plan efectivo del usuario."""
+    # Super admin siempre premium
+    if user["rol"] == "super_admin" or es_super_admin(user["user_id"]):
         return "premium"
     
     if user["plan"] != "gratis" and user["plan_expira"]:
@@ -192,6 +217,25 @@ def actualizar_plan(user_id: int, plan: str, dias: int) -> None:
         cur.execute(
             "UPDATE usuarios SET plan=?, plan_expira=? WHERE user_id=?",
             (plan, expira, user_id),
+        )
+
+
+def cambiar_plan_admin(user_id: int, plan: str, dias: Optional[int] = None) -> None:
+    """Cambia el plan de un usuario manualmente (solo admin)."""
+    expira = int(time.time()) + (dias * 86400) if dias else None
+    with cursor() as cur:
+        cur.execute(
+            "UPDATE usuarios SET plan=?, plan_expira=? WHERE user_id=?",
+            (plan, expira, user_id),
+        )
+
+
+def cambiar_rol_admin(user_id: int, rol: str) -> None:
+    """Cambia el rol de un usuario (solo admin)."""
+    with cursor() as cur:
+        cur.execute(
+            "UPDATE usuarios SET rol=? WHERE user_id=?",
+            (rol, user_id),
         )
 
 
@@ -247,9 +291,11 @@ def contar_usuarios() -> dict:
         total = cur.fetchone()["c"]
         cur.execute("SELECT plan, COUNT(*) c FROM usuarios GROUP BY plan")
         por_plan = {r["plan"]: r["c"] for r in cur.fetchall()}
+        cur.execute("SELECT rol, COUNT(*) c FROM usuarios GROUP BY rol")
+        por_rol = {r["rol"]: r["c"] for r in cur.fetchall()}
         cur.execute("SELECT COUNT(*) c FROM usuarios WHERE baneado=1")
         baneados = cur.fetchone()["c"]
-        return {"total": total, "por_plan": por_plan, "baneados": baneados}
+        return {"total": total, "por_plan": por_plan, "por_rol": por_rol, "baneados": baneados}
 
 
 def todos_los_user_ids() -> list:
