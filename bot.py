@@ -70,8 +70,7 @@ async def cmd_ia(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ],
             max_tokens=2000,
         )
-        texto = respuesta.choices[0].message.content
-        await aviso.edit_text(texto)
+        await aviso.edit_text(respuesta.choices[0].message.content)
     except Exception as e:
         await aviso.edit_text(f"❌ Error: {e}")
 
@@ -203,7 +202,7 @@ async def cmd_imagen(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_photo(photo=url, caption=f"🎨 {prompt}")
         await aviso.delete()
     except Exception as e:
-        await aviso.edit_text(f"❌ Error generando imagen: {e}")
+        await aviso.edit_text(f"❌ Error: {e}")
 
 
 # ========== COMANDOS BÁSICOS ==========
@@ -227,7 +226,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     
     if es_admin:
-        texto += "\n\n🤖 Comandos IA: /ia /guion /ideas /seo /redactar /imagen\n🛠 Admin: /admin"
+        texto += "\n\n🤖 IA: /ia /guion /ideas /seo /redactar /imagen\n🛠 Admin: /admin"
     
     await update.message.reply_markdown(texto)
 
@@ -236,11 +235,11 @@ async def cmd_ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = (
         "📖 *Comandos*\n\n"
         "/plan — /galeria — /activar — /referir — /puntos\n"
-        "/watermark [texto] — /fuente [nombre] — /colores [#1] [#2]\n"
+        "/watermark [texto] — /fuente [nombre]\n"
         "/conectar_youtube [canal] — /reporte"
     )
     if _es_super_admin(update.effective_user.id):
-        texto += "\n\n🤖 *IA:* /ia /guion /ideas /seo /redactar /imagen\n🛠 *Admin:* /admin"
+        texto += "\n\n🤖 IA: /ia /guion /ideas /seo /redactar /imagen\n🛠 Admin: /admin"
     await update.message.reply_markdown(texto)
 
 
@@ -249,8 +248,7 @@ async def cmd_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     usuario = db.obtener_usuario(user_id)
     plan_id = db.plan_activo(usuario)
     plan = PLANES[plan_id]
-    texto = f"💳 *Tu plan: {plan.nombre}*"
-    await update.message.reply_markdown(texto)
+    await update.message.reply_markdown(f"💳 *Tu plan: {plan.nombre}*")
 
 
 async def cmd_activar(update: Update, context: ContextTypes.DEFAULT_TYPE):
