@@ -26,7 +26,7 @@ import processing
 import analysis
 import referidos
 import personalizacion
-from config import PLANES, MAX_WORKERS_COLA, GROQ_API_KEY, SUPER_ADMIN_ID
+from config import PLANES, MAX_WORKERS_COLA, GROQ_API_KEY, SUPER_ADMIN_ID, IA_MODELO
 
 groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
@@ -50,13 +50,12 @@ def _es_super_admin(user_id: int) -> bool:
 # ========== COMANDOS DE IA ==========
 
 async def cmd_ia(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Chat con IA usando Groq (Llama 3)."""
     if not _es_super_admin(update.effective_user.id):
         await update.message.reply_text("⛔ Comando exclusivo del Super Admin.")
         return
     
     if not context.args:
-        await update.message.reply_text("Uso: /ia [tu pregunta]\nEj: /ia ¿Cómo hacer viral un video?")
+        await update.message.reply_text("Uso: /ia [tu pregunta]")
         return
     
     prompt = " ".join(context.args)
@@ -64,27 +63,26 @@ async def cmd_ia(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         respuesta = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=IA_MODELO,
             messages=[
-                {"role": "system", "content": "Eres un asistente experto en creación de contenido, marketing digital, SEO y crecimiento en redes sociales. Respondes en español, de forma clara y profesional."},
+                {"role": "system", "content": "Eres un asistente experto en creación de contenido, marketing digital, SEO y crecimiento en redes sociales. Respondes en español."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=2000,
         )
         texto = respuesta.choices[0].message.content
-        await aviso.edit_text(texto, parse_mode=None)
+        await aviso.edit_text(texto)
     except Exception as e:
         await aviso.edit_text(f"❌ Error: {e}")
 
 
 async def cmd_guion(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Genera un guion para video."""
     if not _es_super_admin(update.effective_user.id):
         await update.message.reply_text("⛔ Comando exclusivo del Super Admin.")
         return
     
     if not context.args:
-        await update.message.reply_text("Uso: /guion [tema]\nEj: /guion dinero y motivación")
+        await update.message.reply_text("Uso: /guion [tema]")
         return
     
     tema = " ".join(context.args)
@@ -92,9 +90,9 @@ async def cmd_guion(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         respuesta = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=IA_MODELO,
             messages=[
-                {"role": "system", "content": "Eres un guionista experto en videos virales para TikTok, Reels y Shorts. Creas guiones cortos con hook, desarrollo y CTA."},
+                {"role": "system", "content": "Eres un guionista experto en videos virales para TikTok, Reels y Shorts."},
                 {"role": "user", "content": f"Crea un guion de 30-60 segundos sobre: {tema}"}
             ],
             max_tokens=1500,
@@ -105,13 +103,12 @@ async def cmd_guion(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_ideas(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Genera ideas de contenido."""
     if not _es_super_admin(update.effective_user.id):
         await update.message.reply_text("⛔ Comando exclusivo del Super Admin.")
         return
     
     if not context.args:
-        await update.message.reply_text("Uso: /ideas [cantidad] [tema]\nEj: /ideas 10 emprendimiento")
+        await update.message.reply_text("Uso: /ideas [cantidad] [tema]")
         return
     
     cantidad = 5
@@ -125,9 +122,9 @@ async def cmd_ideas(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         respuesta = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=IA_MODELO,
             messages=[
-                {"role": "system", "content": "Eres un experto en marketing de contenidos. Generas ideas creativas y accionables."},
+                {"role": "system", "content": "Eres un experto en marketing de contenidos."},
                 {"role": "user", "content": f"Dame {cantidad} ideas de contenido sobre: {tema}"}
             ],
             max_tokens=1500,
@@ -138,13 +135,12 @@ async def cmd_ideas(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_seo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Genera títulos y hashtags optimizados."""
     if not _es_super_admin(update.effective_user.id):
         await update.message.reply_text("⛔ Comando exclusivo del Super Admin.")
         return
     
     if not context.args:
-        await update.message.reply_text("Uso: /seo [tema]\nEj: /seo trading cripto")
+        await update.message.reply_text("Uso: /seo [tema]")
         return
     
     tema = " ".join(context.args)
@@ -152,9 +148,9 @@ async def cmd_seo(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         respuesta = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=IA_MODELO,
             messages=[
-                {"role": "system", "content": "Eres experto en SEO para YouTube y TikTok. Generas títulos optimizados, descripciones y hashtags virales."},
+                {"role": "system", "content": "Eres experto en SEO para YouTube y TikTok."},
                 {"role": "user", "content": f"Genera 5 títulos SEO, descripción y 15 hashtags para: {tema}"}
             ],
             max_tokens=1500,
@@ -165,13 +161,12 @@ async def cmd_seo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_redactar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Redacta cualquier texto."""
     if not _es_super_admin(update.effective_user.id):
         await update.message.reply_text("⛔ Comando exclusivo del Super Admin.")
         return
     
     if not context.args:
-        await update.message.reply_text("Uso: /redactar [tema]\nEj: /redactar descripción para podcast de éxito")
+        await update.message.reply_text("Uso: /redactar [tema]")
         return
     
     tema = " ".join(context.args)
@@ -179,9 +174,9 @@ async def cmd_redactar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         respuesta = groq_client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=IA_MODELO,
             messages=[
-                {"role": "system", "content": "Eres un redactor profesional. Escribes textos claros, persuasivos y optimizados."},
+                {"role": "system", "content": "Eres un redactor profesional."},
                 {"role": "user", "content": f"Redacta: {tema}"}
             ],
             max_tokens=1500,
@@ -192,13 +187,12 @@ async def cmd_redactar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_imagen(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Genera imágenes con Pollinations.ai (gratis)."""
     if not _es_super_admin(update.effective_user.id):
         await update.message.reply_text("⛔ Comando exclusivo del Super Admin.")
         return
     
     if not context.args:
-        await update.message.reply_text("Uso: /imagen [descripción]\nEj: /imagen un león dorado")
+        await update.message.reply_text("Uso: /imagen [descripción]")
         return
     
     prompt = " ".join(context.args)
@@ -206,10 +200,7 @@ async def cmd_imagen(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     try:
         url = f"https://image.pollinations.ai/prompt/{prompt}?width=1024&height=1024&nologo=true"
-        await update.message.reply_photo(
-            photo=url,
-            caption=f"🎨 {prompt}"
-        )
+        await update.message.reply_photo(photo=url, caption=f"🎨 {prompt}")
         await aviso.delete()
     except Exception as e:
         await aviso.edit_text(f"❌ Error generando imagen: {e}")
@@ -230,47 +221,26 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     texto = (
         f"👋 ¡Hola {user.first_name}! Bienvenido a *Auto Clipper Pro* 🎬\n\n"
-        f"Tu plan actual: *{PLANES[plan].nombre}*\n"
+        f"Tu plan: *{PLANES[plan].nombre}*\n"
         f"Tu rol: *{'Super Admin' if es_admin else 'Usuario'}*\n\n"
-        "📥 Envíame el link de un video para generar clips.\n\n"
-        "Comandos útiles:\n"
-        "/plan — Ver tu plan\n"
-        "/ayuda — Ver todos los comandos"
+        "📥 Envíame un link para generar clips."
     )
     
     if es_admin:
-        texto += "\n\n🛠 *Comandos de IA (Super Admin):*\n/ia — /guion — /ideas — /seo — /redactar — /imagen"
+        texto += "\n\n🤖 Comandos IA: /ia /guion /ideas /seo /redactar /imagen\n🛠 Admin: /admin"
     
     await update.message.reply_markdown(texto)
 
 
 async def cmd_ayuda(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = (
-        "📖 *Comandos disponibles*\n\n"
-        "*Clipping:*\n"
-        "Envía un link directamente.\n"
-        "/galeria — Tus clips\n\n"
-        "*Cuentas:*\n"
-        "/conectar_youtube [canal]\n"
-        "/reporte — Reporte\n\n"
-        "*Personalización:*\n"
-        "/watermark [texto] — /fuente [nombre]\n"
-        "/colores [#hex1] [#hex2] — /posicion_logo [pos]\n\n"
-        "*Cuenta:*\n"
-        "/plan — /activar [key] — /referir — /puntos"
+        "📖 *Comandos*\n\n"
+        "/plan — /galeria — /activar — /referir — /puntos\n"
+        "/watermark [texto] — /fuente [nombre] — /colores [#1] [#2]\n"
+        "/conectar_youtube [canal] — /reporte"
     )
-    
     if _es_super_admin(update.effective_user.id):
-        texto += (
-            "\n\n🤖 *IA (Super Admin):*\n"
-            "/ia [pregunta] — Chat con IA\n"
-            "/guion [tema] — Generar guion\n"
-            "/ideas [n] [tema] — Generar ideas\n"
-            "/seo [tema] — Títulos y hashtags\n"
-            "/redactar [tema] — Redactar texto\n"
-            "/imagen [desc] — Generar imagen"
-        )
-    
+        texto += "\n\n🤖 *IA:* /ia /guion /ideas /seo /redactar /imagen\n🛠 *Admin:* /admin"
     await update.message.reply_markdown(texto)
 
 
@@ -279,17 +249,7 @@ async def cmd_plan(update: Update, context: ContextTypes.DEFAULT_TYPE):
     usuario = db.obtener_usuario(user_id)
     plan_id = db.plan_activo(usuario)
     plan = PLANES[plan_id]
-    usados = db.videos_usados_hoy(user_id, _fecha_hoy())
-    limite = "Ilimitados" if plan.videos_por_dia == -1 else str(plan.videos_por_dia)
-
-    texto = (
-        f"💳 *Tu plan: {plan.nombre}*\n\n"
-        f"Videos hoy: {usados} / {limite}\n"
-        f"Subtítulos: {'✅' if plan.subtitulos_animados else '❌'}\n"
-        f"Highlights: {'✅' if plan.deteccion_highlights else '❌'}\n"
-        f"Cuentas: {plan.analisis_cuentas}\n"
-        f"Autopilot: {'✅' if plan.modo_autopilot else '❌'}"
-    )
+    texto = f"💳 *Tu plan: {plan.nombre}*"
     await update.message.reply_markdown(texto)
 
 
@@ -302,18 +262,15 @@ async def cmd_activar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_referir(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    usuario = db.obtener_usuario(user_id)
+    usuario = db.obtener_usuario(update.effective_user.id)
     bot_username = (await context.bot.get_me()).username
     link = f"https://t.me/{bot_username}?start={usuario['codigo_referido']}"
-    await update.message.reply_markdown(
-        f"🎁 *Tu link de referidos:*\n{link}"
-    )
+    await update.message.reply_markdown(f"🎁 Tu link: {link}")
 
 
 async def cmd_puntos(update: Update, context: ContextTypes.DEFAULT_TYPE):
     usuario = db.obtener_usuario(update.effective_user.id)
-    await update.message.reply_markdown(f"⭐ Tienes *{usuario['puntos_lealtad']}* puntos.")
+    await update.message.reply_markdown(f"⭐ *{usuario['puntos_lealtad']}* puntos")
 
 
 async def cmd_canjear(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -321,17 +278,17 @@ async def cmd_canjear(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if dias == 0:
         await update.message.reply_text(f"Te faltan {referidos.PUNTOS_PARA_UN_DIA_PREMIUM - restantes} puntos.")
     else:
-        await update.message.reply_text(f"🎉 ¡Canjeaste {dias} día(s) de Premium!")
+        await update.message.reply_text(f"🎉 ¡{dias} día(s) Premium!")
 
 
 async def cmd_galeria(update: Update, context: ContextTypes.DEFAULT_TYPE):
     clips = db.listar_clips(update.effective_user.id, limit=10)
     if not clips:
-        await update.message.reply_text("Todavía no tienes clips generados.")
+        await update.message.reply_text("No tienes clips todavía.")
         return
-    lineas = ["🎞 *Tus últimos clips:*\n"]
+    lineas = ["🎞 *Tus clips:*\n"]
     for c in clips:
-        lineas.append(f"#{c['id']} {c['titulo'][:40]} — {c['puntuacion_viral']:.0f}%")
+        lineas.append(f"#{c['id']} {c['titulo'][:40]}")
     await update.message.reply_markdown("\n".join(lineas))
 
 
@@ -343,15 +300,15 @@ async def cmd_personalizar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def cmd_watermark(update: Update, context: ContextTypes.DEFAULT_TYPE):
     texto = " ".join(context.args)
     if not texto:
-        await update.message.reply_text("Uso: /watermark Tu Texto Aquí")
+        await update.message.reply_text("Uso: /watermark Tu Texto")
         return
     personalizacion.set_watermark_texto(update.effective_user.id, texto)
-    await update.message.reply_text("✅ Marca de agua actualizada.")
+    await update.message.reply_text("✅ Marca actualizada.")
 
 
 async def cmd_fuente(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("Uso: /fuente NombreFuente")
+        await update.message.reply_text("Uso: /fuente Nombre")
         return
     personalizacion.set_fuente(update.effective_user.id, context.args[0])
     await update.message.reply_text("✅ Fuente actualizada.")
@@ -359,7 +316,7 @@ async def cmd_fuente(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_colores(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if len(context.args) != 2:
-        await update.message.reply_text("Uso: /colores #FFFFFF #000000")
+        await update.message.reply_text("Uso: /colores #FFF #000")
         return
     personalizacion.set_colores(update.effective_user.id, *context.args)
     await update.message.reply_text("✅ Colores actualizados.")
@@ -374,7 +331,7 @@ async def cmd_posicion_logo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_subir_logo(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Envía la imagen como respuesta a este comando.")
+    await update.message.reply_text("Envía la imagen como respuesta.")
 
 
 async def cmd_conectar_youtube(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -382,15 +339,15 @@ async def cmd_conectar_youtube(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.message.reply_text("Uso: /conectar_youtube @canal")
         return
     db.conectar_cuenta(update.effective_user.id, "youtube", context.args[0])
-    await update.message.reply_text(f"✅ Canal {context.args[0]} conectado.")
+    await update.message.reply_text(f"✅ {context.args[0]} conectado.")
 
 
 async def cmd_reporte(update: Update, context: ContextTypes.DEFAULT_TYPE):
     cuentas = db.cuentas_de_usuario(update.effective_user.id)
     if not cuentas:
-        await update.message.reply_text("No tienes cuentas conectadas.")
+        await update.message.reply_text("No tienes cuentas.")
         return
-    await update.message.reply_text("📊 Generando reporte...")
+    await update.message.reply_text("📊 Generando...")
 
 
 async def manejar_link(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -473,7 +430,6 @@ def construir_app() -> Application:
     db.inicializar_db()
     app = Application.builder().token(config.BOT_TOKEN).build()
 
-    # Comandos IA (Super Admin)
     app.add_handler(CommandHandler("ia", cmd_ia))
     app.add_handler(CommandHandler("guion", cmd_guion))
     app.add_handler(CommandHandler("ideas", cmd_ideas))
@@ -481,7 +437,6 @@ def construir_app() -> Application:
     app.add_handler(CommandHandler("redactar", cmd_redactar))
     app.add_handler(CommandHandler("imagen", cmd_imagen))
 
-    # Comandos usuario
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("ayuda", cmd_ayuda))
     app.add_handler(CommandHandler("plan", cmd_plan))
@@ -499,7 +454,6 @@ def construir_app() -> Application:
     app.add_handler(CommandHandler("conectar_youtube", cmd_conectar_youtube))
     app.add_handler(CommandHandler("reporte", cmd_reporte))
 
-    # Admin
     app.add_handler(CommandHandler("admin", admin.admin_panel))
     app.add_handler(CommandHandler("admin_users", admin.admin_users))
     app.add_handler(CommandHandler("admin_info", admin.admin_info))
@@ -512,7 +466,6 @@ def construir_app() -> Application:
     app.add_handler(CommandHandler("admin_ban", admin.admin_ban))
     app.add_handler(CommandHandler("admin_unban", admin.admin_unban))
 
-    # Links
     app.add_handler(MessageHandler(
         filters.TEXT & ~filters.COMMAND & filters.Regex(r"https?://"), manejar_link
     ))
