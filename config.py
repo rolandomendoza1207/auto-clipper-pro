@@ -26,7 +26,7 @@ SUPER_ADMIN_ID = "8578174223"
 SUPER_ADMIN_IDS = [SUPER_ADMIN_ID] if SUPER_ADMIN_ID else []
 
 # ============ IA ============
-IA_MODELO = "llama-3.1-8b-instant"
+IA_MODELO = "openai/gpt-oss-20b"
 IA_MAX_TOKENS = 2000
 IA_TEMPERATURA = 0.7
 
