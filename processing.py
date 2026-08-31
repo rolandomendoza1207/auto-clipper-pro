@@ -2,7 +2,7 @@
 processing.py
 =============
 Pipeline de procesamiento de video:
-  1. Descarga (yt-dlp) desde YouTube / TikTok / Instagram
+  1. Descarga (yt-dlp) con respaldo API externa (vevioz.com)
   2. Transcripción con Groq (Whisper large-v3)
   3. Detección de segmentos destacados
   4. Corte de clips + conversión a 9:16 + subtítulos + marca de agua
@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import List, Optional
 
 import yt_dlp
+import requests
 from groq import Groq
 from loguru import logger
 
@@ -55,7 +56,48 @@ def _detectar_plataforma(url: str) -> str:
         return "instagram"
     if "youtube.com" in url or "youtu.be" in url:
         return "youtube"
-    raise ErrorProcesamiento("URL no soportada. Usa un link de YouTube, TikTok o Instagram.")
+    raise ErrorProcesamiento("URL no soportada.")
+
+
+def _descargar_via_api(url: str, destino: Path) -> bool:
+    """Descarga usando API externa como respaldo."""
+    try:
+        api_url = f"https://api.vevioz.com/api/download?url={url}"
+        response = requests.get(api_url, timeout=30)
+        data = response.json()
+        
+        if data.get("video"):
+            video_url = data["video"][0].get("url") or data["video"][0].get("download_url")
+            if video_url:
+                r = requests.get(video_url, stream=True, timeout=60)
+                with open(destino, 'wb') as f:
+                    for chunk in r.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                return destino.exists() and destino.stat().st_size > 1000
+    except Exception as e:
+        logger.warning(f"API externa falló: {e}")
+    return False
+
+
+def _descargar_via_api2(url: str, destino: Path) -> bool:
+    """Segunda API de respaldo."""
+    try:
+        api_url = f"https://yt-api.com/api/download?url={url}"
+        response = requests.get(api_url, timeout=30)
+        data = response.json()
+        
+        if data.get("download_url"):
+            video_url = data["download_url"]
+            r = requests.get(video_url, stream=True, timeout=60)
+            with open(destino, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            return destino.exists() and destino.stat().st_size > 1000
+    except Exception as e:
+        logger.warning(f"API 2 falló: {e}")
+    return False
 
 
 async def descargar_video(url: str, user_id: int) -> ResultadoDescarga:
@@ -68,44 +110,61 @@ async def descargar_video(url: str, user_id: int) -> ResultadoDescarga:
         "quiet": True,
         "no_warnings": True,
         "noplaylist": True,
-        "extractor_retries": 3,
-        "retries": 3,
-        "socket_timeout": 30,
+        "extractor_retries": 2,
+        "retries": 2,
+        "socket_timeout": 20,
         "http_headers": {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-            "Accept-Language": "en-US,en;q=0.9",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
         },
         "extractor_args": {
             "youtube": {
-                "player_client": ["android", "web", "tv"],
-                "skip": ["dash", "hls"],
-            },
-            "youtubetab": {
-                "skip": ["webpage"],
+                "player_client": ["android", "web"],
             },
         },
     }
 
-    def _run():
+    info = None
+    titulo = "Video sin título"
+    duracion = 0
+
+    # Intento 1: yt-dlp
+    def _run_ytdlp():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            return info
+            return ydl.extract_info(url, download=True)
 
     try:
-        info = await asyncio.to_thread(_run)
+        info = await asyncio.to_thread(_run_ytdlp)
     except Exception as e:
-        logger.error(f"Error descargando {url}: {e}")
-        raise ErrorProcesamiento(f"No se pudo descargar el video: {e}")
+        logger.warning(f"yt-dlp falló: {e}. Intentando API externa...")
+        info = None
 
-    duracion = info.get("duration", 0) or 0
+    # Intento 2: API externa
+    if not info or not destino.exists() or destino.stat().st_size < 1000:
+        logger.info("Usando API externa de respaldo...")
+        if not _descargar_via_api(url, destino):
+            if not _descargar_via_api2(url, destino):
+                destino.unlink(missing_ok=True)
+                raise ErrorProcesamiento("No se pudo descargar el video de ninguna fuente.")
+
+    if info:
+        titulo = info.get("title", titulo)
+        duracion = info.get("duration", 0) or 0
+    else:
+        # Obtener metadata básica
+        try:
+            response = requests.get(f"https://noembed.com/embed?url={url}", timeout=10)
+            data = response.json()
+            titulo = data.get("title", titulo)
+        except:
+            pass
+
     if duracion > MAX_DURACION_VIDEO:
         destino.unlink(missing_ok=True)
         raise ErrorProcesamiento("El video supera el límite de 3 horas.")
 
     return ResultadoDescarga(
         ruta_video=destino,
-        titulo=info.get("title", "Video sin título"),
+        titulo=titulo,
         duracion=duracion,
         plataforma=plataforma,
     )
