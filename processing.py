@@ -60,6 +60,15 @@ def _detectar_plataforma(url: str) -> str:
     raise ErrorProcesamiento("URL no soportada.")
 
 
+def _limpiar_url(url: str) -> str:
+    """Limpia la URL de parámetros innecesarios."""
+    if "youtu.be" in url:
+        return url.split("?")[0]
+    if "youtube.com" in url and "&" in url:
+        return url.split("&")[0]
+    return url
+
+
 def _obtener_cookies_automaticas() -> bool:
     """Descarga cookies frescas de YouTube desde repositorios públicos."""
     urls = [
@@ -120,6 +129,7 @@ def _descargar_via_api2(url: str, destino: Path) -> bool:
 
 
 async def descargar_video(url: str, user_id: int) -> ResultadoDescarga:
+    url = _limpiar_url(url)
     plataforma = _detectar_plataforma(url)
     destino = DOWNLOADS_DIR / f"{user_id}_{int(time.time())}.mp4"
 
