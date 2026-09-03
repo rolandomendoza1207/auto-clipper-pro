@@ -65,7 +65,6 @@ def _obtener_cookies_automaticas() -> bool:
     urls = [
         "https://raw.githubusercontent.com/ytdl-org/youtube-cookies/main/cookies.txt",
         "https://raw.githubusercontent.com/yt-dlp/yt-dlp/master/test/cookies/youtube.txt",
-        "https://raw.githubusercontent.com/ytdl-org/youtube-cookies/main/cookies.txt",
     ]
     for url in urls:
         try:
@@ -125,7 +124,7 @@ async def descargar_video(url: str, user_id: int) -> ResultadoDescarga:
     destino = DOWNLOADS_DIR / f"{user_id}_{int(time.time())}.mp4"
 
     ydl_opts = {
-        "format": "best[height<=720]",
+        "format": "best",
         "outtmpl": str(destino),
         "quiet": True,
         "no_warnings": True,
