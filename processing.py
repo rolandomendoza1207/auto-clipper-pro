@@ -2,7 +2,7 @@
 processing.py
 =============
 Pipeline de procesamiento de video:
-  1. Descarga (yt-dlp) con respaldo API externa (vevioz.com)
+  1. Descarga (yt-dlp) con cookies automáticas y APIs de respaldo
   2. Transcripción con Groq (Whisper large-v3)
   3. Detección de segmentos destacados
   4. Corte de clips + conversión a 9:16 + subtítulos + marca de agua
@@ -12,6 +12,7 @@ import asyncio
 import json
 import subprocess
 import time
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -57,6 +58,25 @@ def _detectar_plataforma(url: str) -> str:
     if "youtube.com" in url or "youtu.be" in url:
         return "youtube"
     raise ErrorProcesamiento("URL no soportada.")
+
+
+def _obtener_cookies_automaticas() -> bool:
+    """Descarga cookies frescas de YouTube desde repositorios públicos."""
+    urls = [
+        "https://raw.githubusercontent.com/ytdl-org/youtube-cookies/main/cookies.txt",
+        "https://raw.githubusercontent.com/yt-dlp/yt-dlp/master/test/cookies/youtube.txt",
+        "https://raw.githubusercontent.com/ytdl-org/youtube-cookies/main/cookies.txt",
+    ]
+    for url in urls:
+        try:
+            r = requests.get(url, timeout=15)
+            if r.status_code == 200 and len(r.text) > 300:
+                with open("cookies.txt", "w", encoding="utf-8") as f:
+                    f.write(r.text)
+                return True
+        except Exception as e:
+            logger.warning(f"Error descargando cookies de {url}: {e}")
+    return False
 
 
 def _descargar_via_api(url: str, destino: Path) -> bool:
@@ -127,7 +147,7 @@ async def descargar_video(url: str, user_id: int) -> ResultadoDescarga:
     titulo = "Video sin título"
     duracion = 0
 
-    # Intento 1: yt-dlp
+    # Intento 1: yt-dlp sin cookies
     def _run_ytdlp():
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             return ydl.extract_info(url, download=True)
@@ -135,10 +155,24 @@ async def descargar_video(url: str, user_id: int) -> ResultadoDescarga:
     try:
         info = await asyncio.to_thread(_run_ytdlp)
     except Exception as e:
-        logger.warning(f"yt-dlp falló: {e}. Intentando API externa...")
+        logger.warning(f"yt-dlp sin cookies falló: {e}. Intentando con cookies...")
         info = None
 
-    # Intento 2: API externa
+    # Intento 2: yt-dlp con cookies automáticas
+    if not info or not destino.exists() or destino.stat().st_size < 1000:
+        if _obtener_cookies_automaticas():
+            ydl_opts_con_cookies = ydl_opts.copy()
+            ydl_opts_con_cookies["cookiefile"] = "cookies.txt"
+            def _run_ytdlp_cookies():
+                with yt_dlp.YoutubeDL(ydl_opts_con_cookies) as ydl:
+                    return ydl.extract_info(url, download=True)
+            try:
+                info = await asyncio.to_thread(_run_ytdlp_cookies)
+            except Exception as e:
+                logger.warning(f"yt-dlp con cookies falló: {e}")
+                info = None
+
+    # Intento 3: API externa
     if not info or not destino.exists() or destino.stat().st_size < 1000:
         logger.info("Usando API externa de respaldo...")
         if not _descargar_via_api(url, destino):
@@ -150,7 +184,6 @@ async def descargar_video(url: str, user_id: int) -> ResultadoDescarga:
         titulo = info.get("title", titulo)
         duracion = info.get("duration", 0) or 0
     else:
-        # Obtener metadata básica
         try:
             response = requests.get(f"https://noembed.com/embed?url={url}", timeout=10)
             data = response.json()
