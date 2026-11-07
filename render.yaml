@@ -1,6 +1,0 @@
-services:
-  - type: web
-    name: auto-clipper-pro
-    env: python
-    buildCommand: pip install -r requirements.txt
-    startCommand: python bot.py
