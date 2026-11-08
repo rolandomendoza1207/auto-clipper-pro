@@ -1,7 +1,7 @@
 import os
 import threading
 from flask import Flask
-from bot_tiktok import main as bot_main
+from bot_tiktok.py import main as bot_main
 
 app = Flask(__name__)
 
